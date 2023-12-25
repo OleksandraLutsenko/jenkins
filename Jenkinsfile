@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
     stages {
@@ -6,10 +5,11 @@ pipeline {
             steps {
                 script {
                     echo 'building the application...'
-                    echo "Executing pipleine for branch $BRANCH_NAME"
+                    echo "Executing pipeline for branch $BRANCH_NAME"
                 }
             }
         }
+
         stage('build') {
             when {
                 expression {
@@ -19,10 +19,10 @@ pipeline {
             steps {
                 script {
                     echo "testing the application..."
-                    }
                 }
             }
         }
+
         stage('deploy') {
             when {
                 expression {
@@ -36,3 +36,4 @@ pipeline {
             }
         }
     }
+}
