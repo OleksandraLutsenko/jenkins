@@ -5,7 +5,7 @@ pipeline {
     tools {
         maven 'maven-3.9'
     }
-    // stages {
+    stages {
     //     stage('increment version') {
     //         steps {
     //             script {
@@ -63,7 +63,7 @@ pipeline {
         //                 sh 'git push origin HEAD:jenkins-jobs'
         //             }
         //         }
-        //     }
+            }
         }
     }
 // }
