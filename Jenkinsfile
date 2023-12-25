@@ -10,9 +10,7 @@ pipeline {
             steps {
                 script {
                     echo 'building the application...'
-                    dir('/var/jenkins_home/workspace/my-pipeline/java-maven-app-jenkins-jobs') {
                     sh 'mvn clean package'
-            }
                 }
             }
         }
