@@ -10,6 +10,7 @@ pipeline {
             steps {
                 script {
                     echo 'building the application...'
+                    echo 'checking the integration...'
                     sh 'mvn clean package'
                 }
             }
