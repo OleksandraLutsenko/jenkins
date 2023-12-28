@@ -10,7 +10,7 @@ pipeline {
         stage('init') {
             steps {
                 script {
-                    gv  = load "script.groovy"
+                    gv = load "script.groovy"
                 }
             }
         }
@@ -25,7 +25,6 @@ pipeline {
             steps {
                 script {
                     buildImage()
-                    }
                 }
             }
         }
@@ -36,7 +35,7 @@ pipeline {
                 }
             }
         }
-        stage('commit version update'){
+        stage('commit version update') {
             steps {
                 script {
                     echo "Updating version in repo..."
@@ -45,3 +44,5 @@ pipeline {
             }
         }
     }
+}
+
