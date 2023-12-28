@@ -25,6 +25,8 @@ pipeline {
             steps {
                 script {
                     buildImage('olekslutsenko23/demo-app:jma-3.0')
+                    dockerLogin()
+                    dockerPush('olekslutsenko23/demo-app:jma-3.0')
                 }
             }
         }
