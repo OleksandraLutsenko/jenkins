@@ -50,7 +50,7 @@ pipeline {
             steps {
                 script {
                     echo "Updating version in repo..."
-                    // gv.updateVersion()
+                    gv.updateVersion()
                 }
             }
         }
