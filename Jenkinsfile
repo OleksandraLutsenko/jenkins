@@ -1,37 +1,47 @@
+#!/usr/bin/env groovy
+
+library identifier: 'jenkins-shared-lib@master', retriever: modernSCM(
+    [$class: 'GitSCMSource',
+    remote: 'https://github.com/OleksandraLutsenko/jenkins-shared-lib.git',
+    credentialsID: 'docker-hub-repo'
+    ]
+)
+
 pipeline {
     agent any
+    tools {
+        maven 'maven-3.9'
+    }
+    environment {
+        IMAGE_NAME = 'olekslutsenko23/demo-app:1.1.4-20'
+    }
     stages {
-        stage('test') {
+        stage('build app') {
             steps {
-                script {
-                    echo 'building the application...'
-                    echo "Executing pipeline for branch $BRANCH_NAME"
-                }
+                echo 'building application jar...'
+                buildJar()
             }
         }
-
-        stage('build') {
-            when {
-                expression {
-                    BRANCH_NAME == "jenkins-job"
-                }
-            }
+        stage('build image') {
             steps {
                 script {
-                    echo "testing the application..."
+                    echo 'building the docker image...'
+                    buildImage(env.IMAGE_NAME)
+                    dockerLogin()
+                    dockerPush(env.IMAGE_NAME)
                 }
             }
-        }
-
-        stage('deploy') {
+        } 
+        stage("deploy") {
             steps {
                 script {
-                    def dockerCmd = 'docker run -p 3080:3080 -d olekslutsenko23/demo-app:jma-1.0'
+                    echo 'deploying docker image to EC2...'
+                    def dockerCmd = "docker run -p 8080:8080 -d ${IMAGE_NAME}"
                     sshagent(['ec2-server-key']) {
-                        sh "ssh -o StrictHostKeyChecking=no ec2-user@3.79.186.218 ${dockerCmd}"
+                        sh "ssh -o StrictHostKeyChecking=no ec2-user@18.184.54.160 ${dockerCmd}"
                     }
                 }
-            }
+            }               
         }
     }
 }
