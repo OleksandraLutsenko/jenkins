@@ -24,14 +24,12 @@ pipeline {
         }
 
         stage('deploy') {
-            when {
-                expression {
-                    BRANCH_NAME == "jenkins-job"
-                }
-            }
             steps {
                 script {
-                    echo 'deploying docker image...'
+                    def dockerCmd = 'docker run -p 3080:3080 -d olekslutsenko23/demo-app:jma-1.0'
+                    sshagent(['ec2-server-key']) {
+                        sh "ssh -o StrictHostKeyChecking=no ec2-user@3.79.186.218 ${dockerCmd}"
+                    }
                 }
             }
         }
