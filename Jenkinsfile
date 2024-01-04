@@ -37,16 +37,15 @@ pipeline {
                 script {
                     echo 'deploying docker image to EC2...'
                     
-                    // def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
+                    def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
                     def ec2Instance = "ec2-user@3.79.186.218"
-                    def dockerComposeCmd = "docker-compose -f docker-compose.yaml up --detach"
 
                     // def dockerCmd = "docker run -p 8080:8080 -d ${IMAGE_NAME}"
                     sshagent(['ec2-server-key']) {
                         // sh "ssh -o StrictHostKeyChecking=no ec2-user@3.79.186.218 ${dockerCmd}"
-                        // sh "scp server-cmds.sh ${ec2Instance}:/home/ec2-user"
+                        sh "scp server-cmds.sh ${ec2Instance}:/home/ec2-user"
                         sh "scp docker-compose.yaml ${ec2Instance}:/home/ec2-user"
-                        sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${dockerComposeCmd}"
+                        sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${shellCmd}"
                     }
                 }
             }               
