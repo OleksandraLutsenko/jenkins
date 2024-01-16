@@ -76,4 +76,20 @@ pipeline {
             }
         }
     }
+    post {
+        success {
+            emailext (
+                subject: "Your Jenkins Build Succeeded: ${currentBuild.fullDisplayName}",
+                body: "The build of ${env.JOB_NAME} #${env.BUILD_NUMBER} is successful.",
+                to: "aleksandra.lutsenko23@gmail.com"
+            )
+        }
+        failure {
+            emailext (
+                subject: "Your Jenkins Build Failed: ${currentBuild.fullDisplayName}",
+                body: "The build of ${env.JOB_NAME} #${env.BUILD_NUMBER} has failed.\n\nConsole Output:\n${BUILD_LOG, maxLines=500}",
+                to: "aleksandra.lutsenko23@gmail.com"
+            )
+        }
+    }
 }
