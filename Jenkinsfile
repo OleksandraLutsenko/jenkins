@@ -61,41 +61,36 @@ pipeline {
         stage('commit version update') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'Jenkins-lutsenko', keyFileVariable: 'PRIVATE_KEY_FILE')]) {
+                    withCredentials([githubApp(credentialsId: 'Jenkins-lutsenko', appIdVariable: 'APP_ID', installationIdVariable: 'INSTALLATION_ID', privateKeyVariable: 'PRIVATE_KEY')]) {
                         sh '''
-                        APP_ID="1091330"
-                        # Generate a JWT using the GitHub App private key
+                        # Generate a JWT for GitHub App
                         JWT=$(ruby -rjson -ropenssl -securerandom -e '
                             payload = {
                             iat: Time.now.to_i - 60,
                             exp: Time.now.to_i + 600,
                             iss: ENV["APP_ID"]
                             }
-                            key = OpenSSL::PKey::RSA.new(File.read(ENV["PRIVATE_KEY_FILE"]))
+                            key = OpenSSL::PKey::RSA.new(ENV["PRIVATE_KEY"])
                             puts JWT.encode(payload, key, "RS256")
                         ')
 
-                        # Get the installation ID for the app
-                        INSTALLATION_ID=$(curl -s -H "Authorization: Bearer $JWT" \
-                            -H "Accept: application/vnd.github+json" \
-                            https://api.github.com/app/installations | jq -r '.[0].id')
-
-                        # Generate an installation token
+                        # Generate an installation token for the app
                         INSTALLATION_TOKEN=$(curl -s -X POST \
                             -H "Authorization: Bearer $JWT" \
                             -H "Accept: application/vnd.github+json" \
                             https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
 
-                        # Save the token to a file
+                        # Save the token for Git operations
                         echo $INSTALLATION_TOKEN > token.txt
                         '''
 
+                        // Read the token
                         def token = readFile('token.txt').trim()
 
                         sh 'git config --global user.email "jenkins@example.com"'
                         sh 'git config --global user.name "jenkins"'
 
-                        // Use the installation token for authentication in the remote URL
+                        // Use the installation token for authentication
                         sh "git remote set-url origin https://${token}@github.com/OleksandraLutsenko/jenkins.git"
 
                         sh 'git add .'
