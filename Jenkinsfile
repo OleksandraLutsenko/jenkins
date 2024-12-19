@@ -58,38 +58,35 @@ pipeline {
                 }
             }
         }
-        stage('commit version update'){
+        stage('commit version update') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'Jenkins-lutsenko', variable: 'PRIVATE_KEY')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'Jenkins-lutsenko', keyFileVariable: 'PRIVATE_KEY_FILE')]) {
                         sh '''
                         APP_ID="1091330"
-                        INSTALLATION_ID=$(curl -s -H "Authorization: Bearer $(ruby -rjson -ropenssl -securerandom -e '
+                        # Generate a JWT using the GitHub App private key
+                        JWT=$(ruby -rjson -ropenssl -securerandom -e '
                             payload = {
                             iat: Time.now.to_i - 60,
                             exp: Time.now.to_i + 600,
                             iss: ENV["APP_ID"]
                             }
-                            key = OpenSSL::PKey::RSA.new(File.read(ENV["PRIVATE_KEY"]))
+                            key = OpenSSL::PKey::RSA.new(File.read(ENV["PRIVATE_KEY_FILE"]))
                             puts JWT.encode(payload, key, "RS256")
-                        ')" \
-                        -H "Accept: application/vnd.github+json" \
-                        https://api.github.com/app/installations | jq -r '.[0].id')
+                        ')
+
+                        # Get the installation ID for the app
+                        INSTALLATION_ID=$(curl -s -H "Authorization: Bearer $JWT" \
+                            -H "Accept: application/vnd.github+json" \
+                            https://api.github.com/app/installations | jq -r '.[0].id')
 
                         # Generate an installation token
                         INSTALLATION_TOKEN=$(curl -s -X POST \
-                            -H "Authorization: Bearer $(ruby -rjson -ropenssl -securerandom -e '
-                                payload = {
-                                iat: Time.now.to_i - 60,
-                                exp: Time.now.to_i + 600,
-                                iss: ENV["APP_ID"]
-                                }
-                                key = OpenSSL::PKey::RSA.new(File.read(ENV["PRIVATE_KEY"]))
-                                puts JWT.encode(payload, key, "RS256")
-                            ')" \
+                            -H "Authorization: Bearer $JWT" \
                             -H "Accept: application/vnd.github+json" \
                             https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
 
+                        # Save the token to a file
                         echo $INSTALLATION_TOKEN > token.txt
                         '''
 
