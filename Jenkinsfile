@@ -1,22 +1,20 @@
-def gv
+#!/usr/bin/env groovy
 
 pipeline {
     agent any
     tools {
-        maven 'maven-3.9'
+        maven 'Maven'
+    }
+    environment {
+        // DOCKER_REPO_SERVER = '330673547330.dkr.ecr.eu-central-1.amazonaws.com'
+        // DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
+        DOCKER_REPO = "olekslutsenko23/demo-app" 
     }
     stages {
-        stage('init') {
-            steps {
-                script {
-                    gv = load "script.groovy"
-                }
-            }
-        }
         stage('increment version') {
             steps {
                 script {
-                    echo "increment the app version"
+                    echo 'incrementing app version...'
                     sh 'mvn build-helper:parse-version versions:set \
                         -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.minorVersion}.\\\${parsedVersion.nextIncrementalVersion} \
                         versions:commit'
@@ -39,27 +37,76 @@ pipeline {
                 script {
                     echo "building the docker image..."
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-repo', passwordVariable: 'PASS', usernameVariable: 'USER')]){
-                        sh "docker build -t olekslutsenko23/demo-app:${IMAGE_NAME} ."
-                        sh 'echo $PASS | docker login -u $USER --password-stdin'
-                        sh "docker push olekslutsenko23/demo-app:${IMAGE_NAME}"
+                        sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} ."
+                        sh 'echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}'
+                        sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
                     }
                 }
             }
         }
         stage('deploy') {
+            environment {
+                AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('aws_secret_access_key')
+                APP_NAME = 'java-maven-app'
+            }
             steps {
                 script {
-                    echo 'deploying docker image...'
+                   echo 'deploying docker image...'
+                   sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
+                   sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
                 }
             }
         }
         stage('commit version update'){
             steps {
                 script {
-                    echo "Updating version in repo..."
-                    gv.updateVersion()
+                    withCredentials([file(credentialsId: 'Jenkins-lutsenko', variable: 'PRIVATE_KEY')]) {
+                        sh '''
+                        APP_ID="1091330"
+                        INSTALLATION_ID=$(curl -s -H "Authorization: Bearer $(ruby -rjson -ropenssl -securerandom -e '
+                            payload = {
+                            iat: Time.now.to_i - 60,
+                            exp: Time.now.to_i + 600,
+                            iss: ENV["APP_ID"]
+                            }
+                            key = OpenSSL::PKey::RSA.new(File.read(ENV["PRIVATE_KEY"]))
+                            puts JWT.encode(payload, key, "RS256")
+                        ')" \
+                        -H "Accept: application/vnd.github+json" \
+                        https://api.github.com/app/installations | jq -r '.[0].id')
+
+                        # Generate an installation token
+                        INSTALLATION_TOKEN=$(curl -s -X POST \
+                            -H "Authorization: Bearer $(ruby -rjson -ropenssl -securerandom -e '
+                                payload = {
+                                iat: Time.now.to_i - 60,
+                                exp: Time.now.to_i + 600,
+                                iss: ENV["APP_ID"]
+                                }
+                                key = OpenSSL::PKey::RSA.new(File.read(ENV["PRIVATE_KEY"]))
+                                puts JWT.encode(payload, key, "RS256")
+                            ')" \
+                            -H "Accept: application/vnd.github+json" \
+                            https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
+
+                        echo $INSTALLATION_TOKEN > token.txt
+                        '''
+
+                        def token = readFile('token.txt').trim()
+
+                        sh 'git config --global user.email "jenkins@example.com"'
+                        sh 'git config --global user.name "jenkins"'
+
+                        // Use the installation token for authentication in the remote URL
+                        sh "git remote set-url origin https://${token}@github.com/OleksandraLutsenko/jenkins.git"
+
+                        sh 'git add .'
+                        sh 'git commit -m "ci: version bump"'
+                        sh 'git push origin HEAD:jenkins-jobs'
                     }
                 }
             }
         }
     }
+}
