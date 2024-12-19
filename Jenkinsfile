@@ -58,47 +58,47 @@ pipeline {
                 }
             }
         }
-        stage('commit version update') {
-            steps {
-                script {
-                    withCredentials([githubApp(credentialsId: 'Jenkins-lutsenko', appIdVariable: 'APP_ID', installationIdVariable: 'INSTALLATION_ID', privateKeyVariable: 'PRIVATE_KEY')]) {
-                        sh '''
-                        # Generate a JWT for GitHub App
-                        JWT=$(ruby -rjson -ropenssl -securerandom -e '
-                            payload = {
-                            iat: Time.now.to_i - 60,
-                            exp: Time.now.to_i + 600,
-                            iss: ENV["APP_ID"]
-                            }
-                            key = OpenSSL::PKey::RSA.new(ENV["PRIVATE_KEY"])
-                            puts JWT.encode(payload, key, "RS256")
-                        ')
+        // stage('commit version update') {
+        //     steps {
+        //         script {
+        //             withCredentials([githubApp(credentialsId: 'Jenkins-lutsenko', appIdVariable: 'APP_ID', installationIdVariable: 'INSTALLATION_ID', privateKeyVariable: 'PRIVATE_KEY')]) {
+        //                 sh '''
+        //                 # Generate a JWT for GitHub App
+        //                 JWT=$(ruby -rjson -ropenssl -securerandom -e '
+        //                     payload = {
+        //                     iat: Time.now.to_i - 60,
+        //                     exp: Time.now.to_i + 600,
+        //                     iss: ENV["APP_ID"]
+        //                     }
+        //                     key = OpenSSL::PKey::RSA.new(ENV["PRIVATE_KEY"])
+        //                     puts JWT.encode(payload, key, "RS256")
+        //                 ')
 
-                        # Generate an installation token for the app
-                        INSTALLATION_TOKEN=$(curl -s -X POST \
-                            -H "Authorization: Bearer $JWT" \
-                            -H "Accept: application/vnd.github+json" \
-                            https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
+        //                 # Generate an installation token for the app
+        //                 INSTALLATION_TOKEN=$(curl -s -X POST \
+        //                     -H "Authorization: Bearer $JWT" \
+        //                     -H "Accept: application/vnd.github+json" \
+        //                     https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
 
-                        # Save the token for Git operations
-                        echo $INSTALLATION_TOKEN > token.txt
-                        '''
+        //                 # Save the token for Git operations
+        //                 echo $INSTALLATION_TOKEN > token.txt
+        //                 '''
 
-                        // Read the token
-                        def token = readFile('token.txt').trim()
+        //                 // Read the token
+        //                 def token = readFile('token.txt').trim()
 
-                        sh 'git config --global user.email "jenkins@example.com"'
-                        sh 'git config --global user.name "jenkins"'
+        //                 sh 'git config --global user.email "jenkins@example.com"'
+        //                 sh 'git config --global user.name "jenkins"'
 
-                        // Use the installation token for authentication
-                        sh "git remote set-url origin https://${token}@github.com/OleksandraLutsenko/jenkins.git"
+        //                 // Use the installation token for authentication
+        //                 sh "git remote set-url origin https://${token}@github.com/OleksandraLutsenko/jenkins.git"
 
-                        sh 'git add .'
-                        sh 'git commit -m "ci: version bump"'
-                        sh 'git push origin HEAD:jenkins-jobs'
-                    }
-                }
-            }
-        }
+        //                 sh 'git add .'
+        //                 sh 'git commit -m "ci: version bump"'
+        //                 sh 'git push origin HEAD:jenkins-jobs'
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
